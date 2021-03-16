@@ -6,7 +6,7 @@ __author__ = 'luyang911@gmail.com'
 import sys
 import logging
 import pymysql as MySQLdb
-from DBUtils.PooledDB import PooledDB
+from dbutils.pooled_db import PooledDB
 
 logger = logging.getLogger(__name__)
 
