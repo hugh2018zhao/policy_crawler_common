@@ -10,6 +10,14 @@
     3. pip install .  # 注意不能少了这个点
 ```
 
+# 如何安装到crawlab
+```
+    1. 将目录切换至当前README.md所在目录
+    2. 将该目录下所有内容压缩为zip包
+    3. 将该zip包当做一个非scrapy的python爬虫上传至crawlab
+    4. 将如下安装命令当做爬虫启动命令进行执行 pip install .  # 注意不能少了这个点
+```
+
 
 # 目录情况简介
 
@@ -17,7 +25,7 @@
 
 ./scrapy_extensions/items/items.py  # 该文件中包含一个RawItem对象，是个高度抽象的数据结构，可以包含任意类型的raw data存入该结构中
 
-./scrapy_extensions/middlewares/proxy.py  # 阿布云代理中间件，会将通过的request对象挂上代理
+./scrapy_extensions/middlewares/abu_proxy.py  # 阿布云代理中间件，会将通过的request对象挂上代理
 
 ./scrapy_extensions/middlewares/ua_rotate.py  # 自动轮换user agent，可支持MOBILE类型和PC类型的UA
 
@@ -29,4 +37,5 @@
     2. 单元测试
     3. logger组件
     4. mongo export
+    5. deltafetch组件
 
