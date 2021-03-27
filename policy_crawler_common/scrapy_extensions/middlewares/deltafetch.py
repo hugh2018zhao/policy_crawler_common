@@ -2,13 +2,13 @@
 __author__ = 'BuGoNee'
 
 import logging
-import os
 
 from scrapy import signals
 from scrapy.exceptions import NotConfigured
 from scrapy.http import Request
-from scrapy.item import BaseItem
+from scrapy.item import Item
 from scrapy.utils.project import get_project_settings
+from crawlab.db.mongo import get_col
 
 logger = logging.getLogger(__name__)
 settings = get_project_settings()
@@ -24,12 +24,11 @@ class DeltaFetchMiddleware(object):
     to be crawled, and processed (typically, item requests are the most cpu
     intensive).
     """
-    def __init__(self, key, db, table, stats=None):
+    def __init__(self, key, stats=None):
         self.DELTAFETCH_KEY_NAME = key
-        self.db = DeltaFetchDbWrapper(table, db)
+        self.col = get_col()
         self.stats = stats
-        logger.info("DELTAFETCH INIT. %s, %s, %s" % (self.DELTAFETCH_KEY_NAME,
-                                                    self.db, self.stats))
+        logger.info("DELTAFETCH INIT. %s, %s, %s" % (self.DELTAFETCH_KEY_NAME, self.col, self.stats))
 
     @classmethod
     def from_crawler(cls, crawler):
@@ -38,35 +37,36 @@ class DeltaFetchMiddleware(object):
             logger.info("DELTAFETCH NotConfigured. ")
             raise NotConfigured
         key = s.get('DELTAFETCH_KEY_NAME')
-        db = s.get('DELTAFETCH_DB_NAME')
-        table = s.get('DELTAFETCH_TABLE_NAME')
-        o = cls(key, db, table, crawler.stats)
+        o = cls(key, crawler.stats)
         crawler.signals.connect(o.spider_opened, signal=signals.spider_opened)
         crawler.signals.connect(o.spider_closed, signal=signals.spider_closed)
         return o
 
     def spider_closed(self, spider):
-        self.db.close()
+        pass
 
     def spider_opened(self, spider):
-        pass
+        self.spider_name = spider.name
 
     def process_spider_output(self, response, result, spider):
         pairs = dict()
         for r in result:
-            if isinstance(r, Request):
+            if isinstance(r, (Item, dict)):
+                key = self._get_key(response.request)
+                if self.stats:
+                    self.stats.inc_value('deltafetch/stored', spider=spider)
+            elif isinstance(r, Request):
                 key = self._get_key(r)
                 if key:
                     pairs[key] = r
                     continue
-            elif isinstance(r, (BaseItem, dict)):
-                key = self._get_key(response.request)
-                if self.stats:
-                    self.stats.inc_value('deltafetch/stored', spider=spider)
             yield r
-        keys = pairs.keys()
-        exists_keys = self.db.has_key(self.DELTAFETCH_KEY_NAME, keys) if keys else []
-        exists_keys = [e.get(self.DELTAFETCH_KEY_NAME) for e in exists_keys]
+
+        keys = list(pairs.keys())
+        exists_keys = []
+        if keys:
+            key_name = self.DELTAFETCH_KEY_NAME
+            exists_keys = self._has_key(source=self.spider_name, key_name=key_name, data=keys)
         logger.debug("EXISTS KEYS IN DB: %s" % exists_keys)
         for key, r in pairs.items():
             if key in exists_keys:
@@ -80,17 +80,10 @@ class DeltaFetchMiddleware(object):
         key = request.meta.get('deltafetch_key', '')
         return str(key)
 
+    def _has_key(self, source="", key_name="raw_key", data=[]):
+        result = self.col.find({key_name: {"$in": data}, "source": source})
+        return [r.get(key_name) for r in result]
 
-class DeltaFetchDbWrapper(Database):
-    def has_key(self, key_name, keys, limit=None):
-        if not keys:
-            logger.error("keys empty: %s" % keys)
-            return []
-        qm = ','.join(["'%s'"] * len(keys))
-        statement = ' %s in (%s) ' % (key_name, qm)
-        statement = statement % tuple(keys)
-        logger.debug("db statement: %s" % statement)
-        return self.get(statement, limit)
 
 if __name__ == '__main__':
     pass
