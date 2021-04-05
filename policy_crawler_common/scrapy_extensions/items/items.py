@@ -20,10 +20,11 @@ class RawItem(scrapy.Item):
     json_            = scrapy.Field()  # 请求的json
     extra            = scrapy.Field()  # 其他信息
     scraped_datetime = scrapy.Field()  # 抓取时间
+    washed_data      = scrapy.Field()  # 清洗后的结果，以json存储
 
 
 def itemify(raw_key, url, category="unknown", source="unknown",
-            html="", json_="", extra=""):
+            html="", json_="", extra="", washed_data=""):
     item = RawItem()
     item['raw_key']  = raw_key
     item['url']      = url
@@ -41,6 +42,7 @@ def itemify(raw_key, url, category="unknown", source="unknown",
         item["extra"] = json.dumps(extra)
 
     item['scraped_datetime'] = datetime.datetime.now()
+    item['washed_data'] = washed_data
     return item
 
 
