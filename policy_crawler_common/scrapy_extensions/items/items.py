@@ -42,7 +42,11 @@ def itemify(raw_key, url, category="unknown", source="unknown",
         item["extra"] = json.dumps(extra)
 
     item['scraped_datetime'] = datetime.datetime.now()
-    item['washed_data'] = washed_data
+
+    if isinstance(washed_data, str):
+        item['washed_data'] = washed_data
+    elif isinstance(washed_data, dict):
+        item["washed_data"] = json.dumps(washed_data)
     return item
 
 
